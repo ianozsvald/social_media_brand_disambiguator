@@ -1,3 +1,10 @@
+data/*
+log.log
+
+# coverage, rope refactoring stuff
+cover/*
+.ropeproject/*
+
 *.py[cod]
 
 # C extensions
