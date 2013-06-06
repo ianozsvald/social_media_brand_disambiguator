@@ -1,5 +1,7 @@
 data/*
 log.log
+ner_apis/opencalais/opencalais_key.py
+output/*
 
 # coverage, rope refactoring stuff
 cover/*
