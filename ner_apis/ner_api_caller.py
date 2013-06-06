@@ -16,6 +16,7 @@ class NERAPICaller(object):
     def __init__(self, source_table, destination_table):
         self.source_table = source_table
         self.destination_table = destination_table
+        self.brand = "apple"  # the brand we're testing
 
     def annotate_all_messages(self):
         while True:
@@ -26,7 +27,7 @@ class NERAPICaller(object):
                 config.logging.info('Asking API for results for "%r"' % (repr(tweet_text)))
                 response = self.call_api(tweet_text)
                 self.store_raw_response(msg, response)
-                if self.is_brand_of('apple', tweet_id):
+                if self.is_brand_of(self.brand, tweet_id):
                     cls = sql_convenience.CLASS_IN
                 else:
                     cls = sql_convenience.CLASS_OUT
