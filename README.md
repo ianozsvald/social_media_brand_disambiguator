@@ -60,7 +60,6 @@ Other notes
   
   * https://github.com/twitter/twitter-text-rb/blob/master/lib/twitter-text/regex.rb  Notes from twitter on how they handle unicode:
   * http://nerd.eurecom.fr/documentation  possibly worth considering these other APIs?
-  * consider replacing activestate xml_to_dict with https://pypi.python.org/pypi/xmldict/0.4.1
 
 
 3rd party bugs
