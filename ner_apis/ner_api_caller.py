@@ -22,9 +22,9 @@ class NERAPICaller(object):
             msg = self.get_unannotated_message()
             if msg is not None:
                 tweet_id = msg[b'tweet_id']
-                #if tweet_id == 306093177683734500:
-                #import pdb; pdb.set_trace()
-                response = self.call_api(msg[b'tweet_text'])
+                tweet_text = msg[b'tweet_text']
+                config.logging.info('Asking API for results for "%r"' % (repr(tweet_text)))
+                response = self.call_api(tweet_text)
                 self.store_raw_response(msg, response)
                 if self.is_brand_of('apple', tweet_id):
                     cls = sql_convenience.CLASS_IN

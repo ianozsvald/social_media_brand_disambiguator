@@ -22,16 +22,16 @@ CLASS_NOT_INVESTIGATED = None  # default before we assign one of 0..3
 def create_all_tables(keyword):
     """Entry point to setup tables"""
     annotations_table = "annotations_{}".format(keyword)
-    spotlight_table = "spotlight_{}".format(keyword)
-    create_tables(config.db_conn, annotations_table, spotlight_table)
-    return annotations_table, spotlight_table
+    opencalais_table = "opencalais_{}".format(keyword)
+    create_tables(config.db_conn, annotations_table, opencalais_table)
+    return annotations_table, opencalais_table
 
 
-def create_tables(db_conn, annotations_table, spotlight_table, force_drop_table=False):
+def create_tables(db_conn, annotations_table, opencalais_table, force_drop_table=False):
     cursor = db_conn.cursor()
     if force_drop_table:
         # drop table if we don't need it
-        for table_name in [annotations_table, spotlight_table]:
+        for table_name in [annotations_table, opencalais_table]:
             sql = "DROP TABLE IF EXISTS {}".format(table_name)
             cursor.execute(sql)
         db_conn.commit()
@@ -43,7 +43,7 @@ def create_tables(db_conn, annotations_table, spotlight_table, force_drop_table=
     # reminder to myself. An example large tweet_id int would be 306093154619240448
     sql = "CREATE TABLE IF NOT EXISTS {} (tweet_id INTEGER UNIQUE, tweet_text TEXT, tweet_created_at DATE, class INT, user_id INT, user_name TEXT)".format(annotations_table)
     cursor.execute(sql)
-    sql = "CREATE TABLE IF NOT EXISTS {} (tweet_id INTEGER UNIQUE, tweet_text TEXT, response_fetched_at DATE, class INT, response TEXT)".format(spotlight_table)
+    sql = "CREATE TABLE IF NOT EXISTS {} (tweet_id INTEGER UNIQUE, tweet_text TEXT, response_fetched_at DATE, class INT, response TEXT)".format(opencalais_table)
     cursor.execute(sql)
     db_conn.commit()
 

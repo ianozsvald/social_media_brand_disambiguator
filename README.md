@@ -10,8 +10,12 @@ I'm only using English tweets and only annotating the ones I can clearly differe
 Setup
 -----
 
+The code runs with Python 2.7 using sqlite.
+
     $ pip install requirements.txt  # base libs
     $ pip install requirements_matplotlib.txt  # get around MEP11 with second requirements file
+
+Note that generally I'm using Python 3 __future__ imports, the code isn't tested with Python 3 but the porting should be straight-forward. sqlite only wants byte/strings for key indexing (not unicode strings).
 
 Tests
 -----
@@ -29,12 +33,20 @@ Creating a gold standard
     # or
     $ DISAMBIGUATOR_CONFIG=production python tweet_annotator.py ../../apple10.json apple
 
+Annotating the tweets using OpenCalais
+--------------------------------------
+
+    $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais --drop  # optionally drop the destination table so we start afresh
+    $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais # run in another window to double fetching speed
+
+
 Exporting results
 -----------------
 
 Output an ordered list of classifications and tweets (by tweet_id), allows a diff (e.g. using meld):
 
     $ DISAMBIGUATOR_CONFIG=production python export_classified_tweets.py annotations_apple > output/annotations_apple.csv
+    $ DISAMBIGUATOR_CONFIG=production python export_classified_tweets.py opencalais_apple > output/opencalais_apple.csv
 
 Design flaws
 ------------
