@@ -36,6 +36,8 @@ Creating a gold standard
 Annotating the tweets using OpenCalais
 --------------------------------------
 
+OpenCalais have a strong named entity recognition API offering, we can use it to annotate tweets to see how it does.
+
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais --drop  # optionally drop the destination table so we start afresh
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais # run in another window to double fetching speed
 
