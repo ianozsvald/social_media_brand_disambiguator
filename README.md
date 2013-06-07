@@ -24,6 +24,13 @@ Tests
     $ nosetests -s  # runs without capturing stdout, useful if you're using `import pdb; pdb.set_trace()` for debugging
     $ nosetests --with-coverage --cover-html  # with an HTML coverage report to cover/index.html
 
+TO FIX
+------
+
+  * the OpenCalais NER code has 1 HARDCODED ENTRY for 'apple' at present, this obviously needs to be extracted as a parameter.
+  * tweet_annotator.py has some hardcoded apple entries
+
+
 Creating a gold standard
 ------------------------
 
@@ -40,7 +47,6 @@ OpenCalais have a strong named entity recognition API offering, we can use it to
 
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais --drop  # optionally drop the destination table so we start afresh
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais # run in another window to double fetching speed
-
 
 Exporting results
 -----------------

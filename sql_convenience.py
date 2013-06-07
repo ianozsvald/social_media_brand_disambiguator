@@ -69,6 +69,15 @@ def extract_classifications_and_tweets(table):
         yield(result[b'class'], result[b'tweet_id'], result[b'tweet_text'])
 
 
+def check_if_tweet_exists(tweet_id, table):
+    """Check if the specified tweet_id exists in our table"""
+    cursor = config.db_conn.cursor()
+    sql = "SELECT count(*) FROM {} WHERE tweet_id=={}".format(table, tweet_id)
+    cursor.execute(sql)
+    result = cursor.fetchone()
+    count = result[b'count(*)']
+    return count
+
 def insert_tweet(tweet, cls, db_conn, annotations_table):
     """Insert tweet into database"""
     tweet_id = tweet['id']

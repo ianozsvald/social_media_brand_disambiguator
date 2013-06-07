@@ -10,7 +10,6 @@ import os
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn import linear_model
-#from sklearn import svm
 from sklearn import cross_validation
 from nltk.corpus import stopwords
 import unicodecsv
@@ -95,8 +94,6 @@ if __name__ == "__main__":
 
     clf_logreg = linear_model.LogisticRegression()  # C=1e5)
     clf = clf_logreg
-    #clf_svc = svm.SVC(kernel='linear', probability=True)
-    #clf = clf_svc
 
     kf = cross_validation.LeaveOneOut(n=len(target))  # KFold(n=len(target), k=10, shuffle=True)
     print("Shortcut cross_val_score to do the same thing, using all CPUs:")
@@ -106,7 +103,7 @@ if __name__ == "__main__":
     print(np.average(cross_val_scores))
     #print("Time taken:", dt1)
 
-    # make sparse training set, 89x586 elements
+    # make sparse training set
     train_set_sparse = vectorizer.transform(train_set)
     # instantiate a local classifier
     clfl = clf.fit(train_set_sparse.todense(), target)
