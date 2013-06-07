@@ -50,6 +50,29 @@ Output an ordered list of classifications and tweets (by tweet_id), allows a dif
     $ DISAMBIGUATOR_CONFIG=production python export_classified_tweets.py annotations_apple > output/annotations_apple.csv
     $ DISAMBIGUATOR_CONFIG=production python export_classified_tweets.py opencalais_apple > output/opencalais_apple.csv
 
+    $ DISAMBIGUATOR_CONFIG=production python score_results.py annotations_apple opencalais_apple
+
+Exporting test/train data
+-------------------------
+
+    $ DISAMBIGUATOR_CONFIG=production python export_inclass_outclass.py annotations_apple
+
+Simple learning
+---------------
+
+Use sklearn in a trivial way to classify in and out of class examples. learn1 uses Leave One Out Cross Validation with a Logistic Regression classifier using default text preparation methods, the results are pretty poor. Note that there is no real validation set (just an out of sample test for the 2 cases as a sanity check after training). This is a trivial classifier and isn't to be trusted for any real work.
+
+It does not output a new annotated table so we can't compare the errors against the gold standard yet.
+
+    $ DISAMBIGUATOR_CONFIG=production python learn1.py annotations_apple
+
+Scoring predictions
+-------------------
+
+We can score another table (e.g. predicitions from the scikit code - forthcoming) against the gold standard, it outputs Precision and Recall.
+
+    $ DISAMBIGUATOR_CONFIG=production python score_results.py annotations_apple scikit_apple
+
 Design flaws
 ------------
 

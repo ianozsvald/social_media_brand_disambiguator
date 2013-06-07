@@ -24,7 +24,7 @@ if __name__ == "__main__":
     writer = unicodecsv.writer(writer_stream, encoding='utf-8')
 
     classifications_and_tweets = sql_convenience.extract_classifications_and_tweets(args.keyword)
-    for cls, tweet in classifications_and_tweets:
+    for cls, tweet_id, tweet in classifications_and_tweets:
         writer.writerow((cls, tweet))
 
     if not writer_stream.isatty():

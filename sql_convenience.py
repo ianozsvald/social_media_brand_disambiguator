@@ -36,6 +36,8 @@ def create_tables(db_conn, annotations_table, opencalais_table, force_drop_table
             cursor.execute(sql)
         db_conn.commit()
 
+    # Odd - large ints are not displayed correctly in SQLite Manager but they
+    # are in sqlite (cmd line and via python)
     # Hah! Bug 3 for SQLite Manager (Firefox) states that the problem is with
     # big integers in JavaScript!
     # https://code.google.com/p/sqlite-manager/issues/detail?can=2&start=0&num=100&q=&colspec=ID%20Type%20Status%20Priority%20Milestone%20Owner%20Summary&groupby=&sort=&id=3
@@ -48,14 +50,23 @@ def create_tables(db_conn, annotations_table, opencalais_table, force_drop_table
     db_conn.commit()
 
 
+def extract_classification_and_tweet(table, tweet_id):
+    """Return the desired tuple (classification, tweet_id, tweet) in table"""
+    cursor = config.db_conn.cursor()
+    sql = "SELECT * FROM {} WHERE tweet_id=={}".format(table, tweet_id)
+    cursor.execute(sql)
+    result = cursor.fetchone()
+    return (result[b'class'], result[b'tweet_id'], result[b'tweet_text'])
+
+
 def extract_classifications_and_tweets(table):
-    """Yield list of pairs of (classification, tweet) in table"""
+    """Yield list of tuples of (classification, tweet_id, tweet) in table"""
     cursor = config.db_conn.cursor()
     sql = "SELECT * FROM {} ORDER BY tweet_id".format(table)
     cursor.execute(sql)
     results = cursor.fetchall()
     for result in results:
-        yield(result[b'class'], result[b'tweet_text'])
+        yield(result[b'class'], result[b'tweet_id'], result[b'tweet_text'])
 
 
 def insert_tweet(tweet, cls, db_conn, annotations_table):
