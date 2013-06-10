@@ -13,6 +13,7 @@ from sklearn import linear_model
 from sklearn import cross_validation
 from nltk.corpus import stopwords
 import unicodecsv
+import sql_convenience
 
 
 ############
@@ -35,12 +36,6 @@ def reader(class_name):
             lines.append(txt)
     return lines
 
-#def read_data(filename):
-    #f = open(filename)
-    #lines = f.readlines()
-    #lines = [unicode(line.strip(), 'utf-8') for line in lines if len(line.strip()) > 0]
-    #return lines
-
 
 #def tokenize(items):
     #"""Create list of >1 char length tokens, split by punctuation"""
@@ -60,14 +55,26 @@ def reader(class_name):
     #return filtered_tweet
 
 
+def label_learned_set(vectorizer, clfl, threshold):
+    table = "learn1_validation_apple"
+    for row in sql_convenience.extract_classifications_and_tweets(table):
+        cls, tweet_id, tweet_text = row
+        spd = vectorizer.transform([tweet_text]).todense()
+        predicted_cls = clfl.predict(spd)
+        predicted_class = predicted_cls[0]  # turn 1D array of 1 item into 1 item
+        predicted_proba = clfl.predict_proba(spd)[0][predicted_class]
+        if predicted_proba < threshold and predicted_class == 1:
+            predicted_class = 0  # force to out-of-class if we don't trust our answer
+            #import pdb; pdb.set_trace()
+        sql_convenience.update_class(tweet_id, table, predicted_class)
+
+
 def check_classification(vectorizer, clfl):
     spd0 = vectorizer.transform([u'really enjoying how the apple\'s iphone makes my ipad look small']).todense()
     print("1?", clfl.predict(spd0), clfl.predict_proba(spd0))  # -> 1 which is set 1 (is brand)
     spd1 = vectorizer.transform([u'i like my apple, eating it makes me happy']).todense()
     print("0?", clfl.predict(spd1), clfl.predict_proba(spd1))  # -> 0 which is set 0 (not brand)
-    # i can use vectorizer.get_feature_names()[spd_item] having tried
-    # np.where(spdx>0) to get a list of item positions to see what the features
-    # are
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple sklearn implementation')
@@ -95,17 +102,21 @@ if __name__ == "__main__":
     clf_logreg = linear_model.LogisticRegression()  # C=1e5)
     clf = clf_logreg
 
-    kf = cross_validation.LeaveOneOut(n=len(target))  # KFold(n=len(target), k=10, shuffle=True)
+    #kf = cross_validation.LeaveOneOut(n=len(target))  # KFold(n=len(target), k=10, shuffle=True)
+    kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
     print("Shortcut cross_val_score to do the same thing, using all CPUs:")
-    #t1 = datetime.datetime.now()
     cross_val_scores = cross_validation.cross_val_score(clf, trainVectorizerArray, target, cv=kf, n_jobs=-1)
-    #dt1 = datetime.datetime.now() - t1
     print(np.average(cross_val_scores))
-    #print("Time taken:", dt1)
 
-    # make sparse training set
+    # make sparse training set using all of the test/train data (combined into
+    # one set)
     train_set_sparse = vectorizer.transform(train_set)
     # instantiate a local classifier
     clfl = clf.fit(train_set_sparse.todense(), target)
 
+    # check and print out two classifications as sanity checks
     check_classification(vectorizer, clfl)
+    # use a threshold (arbitrarily chosen at present), test against the
+    # validation set and write classifications to DB for reporting
+    chosen_threshold = 0.92
+    label_learned_set(vectorizer, clfl, chosen_threshold)
