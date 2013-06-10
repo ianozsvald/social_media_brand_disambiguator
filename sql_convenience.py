@@ -27,11 +27,23 @@ def create_all_tables(keyword):
     return annotations_table, opencalais_table
 
 
+def create_results_table(db_conn, table_name, force_drop_table=False):
+    cursor = db_conn.cursor()
+    if force_drop_table:
+        # drop table if we don't need it
+        sql = "DROP TABLE IF EXISTS {}".format(table_name)
+        cursor.execute(sql)
+        db_conn.commit()
+    sql = "CREATE TABLE IF NOT EXISTS {} (tweet_id INTEGER UNIQUE, tweet_text TEXT, response_fetched_at DATE, class INT, response TEXT)".format(table_name)
+    cursor.execute(sql)
+    db_conn.commit()
+
+
 def create_tables(db_conn, annotations_table, opencalais_table, force_drop_table=False):
     cursor = db_conn.cursor()
     if force_drop_table:
         # drop table if we don't need it
-        for table_name in [annotations_table, opencalais_table]:
+        for table_name in [annotations_table]:
             sql = "DROP TABLE IF EXISTS {}".format(table_name)
             cursor.execute(sql)
         db_conn.commit()
@@ -45,9 +57,10 @@ def create_tables(db_conn, annotations_table, opencalais_table, force_drop_table
     # reminder to myself. An example large tweet_id int would be 306093154619240448
     sql = "CREATE TABLE IF NOT EXISTS {} (tweet_id INTEGER UNIQUE, tweet_text TEXT, tweet_created_at DATE, class INT, user_id INT, user_name TEXT)".format(annotations_table)
     cursor.execute(sql)
-    sql = "CREATE TABLE IF NOT EXISTS {} (tweet_id INTEGER UNIQUE, tweet_text TEXT, response_fetched_at DATE, class INT, response TEXT)".format(opencalais_table)
-    cursor.execute(sql)
     db_conn.commit()
+    #sql = "CREATE TABLE IF NOT EXISTS {} (tweet_id INTEGER UNIQUE, tweet_text TEXT, response_fetched_at DATE, class INT, response TEXT)".format(opencalais_table)
+    #cursor.execute(sql)
+    create_results_table(db_conn, opencalais_table, force_drop_table)
 
 
 def extract_classification_and_tweet(table, tweet_id):
@@ -78,6 +91,7 @@ def check_if_tweet_exists(tweet_id, table):
     count = result[b'count(*)']
     return count
 
+
 def insert_tweet(tweet, cls, db_conn, annotations_table):
     """Insert tweet into database"""
     tweet_id = tweet['id']
@@ -86,6 +100,10 @@ def insert_tweet(tweet, cls, db_conn, annotations_table):
     user_id = tweet['user']['id']
     user_name = tweet['user']['name'].lower()
     tweet_created_at = dt_parser.parse(tweet['created_at'])
+    insert_tweet_details(tweet_id, tweet_text, tweet_created_at, cls, user_id, user_name, db_conn, annotations_table)
+
+
+def insert_tweet_details(tweet_id, tweet_text, tweet_created_at, cls, user_id, user_name, db_conn, annotations_table):
     cursor = db_conn.cursor()
     cursor.execute("INSERT INTO {}(tweet_id, tweet_text, tweet_created_at, class, user_id, user_name) values (?, ?, ?, ?, ?, ?)".format(annotations_table),
                    (tweet_id, tweet_text, tweet_created_at, cls, user_id, user_name))

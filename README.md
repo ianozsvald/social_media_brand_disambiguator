@@ -5,6 +5,8 @@ Brand disambiguator for tweets to differentiate e.g. Orange vs orange (brand vs 
 
 NOTE this is a work in progress, started June 2013, currently it doesn't do very much at all
 
+NOTE NOTE NOTE ! this checkin (10th June 2013) gets my working code checked-in before two talks. I need to go back and do some refactoring (removing some hardcoded table names, improving these docs) before this will work smoothly. YOU HAVE BEEN WARNED.
+
 I'm only using English tweets and only annotating the ones I can clearly differentiate.
 
 Setup
@@ -35,10 +37,12 @@ Creating a gold standard
 ------------------------
 
     $ u'/home/ian/workspace/virtualenvs/tweet_disambiguation_project/prototype1/src'
-    $ export DISAMBIGUATOR_CONFIG=production
+    $ #export DISAMBIGUATOR_CONFIG=production  # might be useful if not using ipython
+    $ DISAMBIGUATOR_CONFIG=production ipython
     $ %run tweet_annotator.py ../../apple10.json apple
     # or
     $ DISAMBIGUATOR_CONFIG=production python tweet_annotator.py ../../apple10.json apple
+
 
 Annotating the tweets using OpenCalais
 --------------------------------------
@@ -47,6 +51,20 @@ OpenCalais have a strong named entity recognition API offering, we can use it to
 
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais --drop  # optionally drop the destination table so we start afresh
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais # run in another window to double fetching speed
+
+
+Creating a test/train and validation subset
+-------------------------------------------
+
+Copy a subset of the annotations table to a test/train set and a validation set:
+
+Testing:
+
+    $ DISAMBIGUATOR_CONFIG=production python make_db_subset.py annotations_apple 10 scikit_testtrain_apple 5 scikit_validation_apple --drop
+
+Real:
+
+    $ DISAMBIGUATOR_CONFIG=production python make_db_subset.py annotations_apple 584 scikit_testtrain_apple 100 scikit_validation_apple --drop
 
 Exporting results
 -----------------
@@ -68,9 +86,11 @@ Simple learning
 
 Use sklearn in a trivial way to classify in and out of class examples. learn1 uses Leave One Out Cross Validation with a Logistic Regression classifier using default text preparation methods, the results are pretty poor. Note that there is no real validation set (just an out of sample test for the 2 cases as a sanity check after training). This is a trivial classifier and isn't to be trusted for any real work.
 
-It does not output a new annotated table so we can't compare the errors against the gold standard yet.
+Results are written to a hardcoded table name (see learn1.py)
 
-    $ DISAMBIGUATOR_CONFIG=production python learn1.py annotations_apple
+******* NOTE use SQLiteManager to copy scikit_validation_app to learn1_validation_apple
+
+    $ DISAMBIGUATOR_CONFIG=production python learn1.py scikit_testtrain_apple 
 
 Scoring predictions
 -------------------
@@ -78,6 +98,11 @@ Scoring predictions
 We can score another table (e.g. predicitions from the scikit code - forthcoming) against the gold standard, it outputs Precision and Recall.
 
     $ DISAMBIGUATOR_CONFIG=production python score_results.py annotations_apple scikit_apple
+
+To compare the validation subset of a Gold Standard to e.g. the OpenCalais equivalent use:
+
+    $ DISAMBIGUATOR_CONFIG=production python score_results.py scikit_validation_apple opencalais_apple
+    $ DISAMBIGUATOR_CONFIG=production python score_results.py scikit_validation_apple learn1_validation_apple
 
 Design flaws
 ------------
