@@ -9,6 +9,14 @@ NOTE NOTE NOTE ! this checkin (10th June 2013) gets my working code checked-in b
 
 I'm only using English tweets and only annotating the ones I can clearly differentiate.
 
+Write-ups
+---------
+
+There are some write-ups and presentations online if you'd like some background:
+
+  * http://ianozsvald.com/category/socialmediabranddisambiguator/
+  * https://speakerdeck.com/ianozsvald/detecting-the-right-apples-and-oranges-1-hour-talk-on-python-for-brand-disambiguation-using-scikit-learn-at-brightonpython-june-2013  # June 2013 at BrightonPython and DataScienceLondon
+
 Setup
 -----
 
