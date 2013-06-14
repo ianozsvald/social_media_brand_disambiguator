@@ -112,6 +112,16 @@ To compare the validation subset of a Gold Standard to e.g. the OpenCalais equiv
     $ DISAMBIGUATOR_CONFIG=production python score_results.py scikit_validation_apple opencalais_apple
     $ DISAMBIGUATOR_CONFIG=production python score_results.py scikit_validation_apple learn1_validation_apple
 
+TODO
+----
+
+Here are a few ideas of mini projects if you'd like to collaborate but aren't sure about the machine-learning side of things:
+
+  * Take my list of tweet-ids, fetch them from Twitter and insert into SQLite using sql_convenience, add the classification that I'll also provide (note - ask me for this list as it isn't in the repo yet)
+  * Extract a validation set of 100 in- and 100 out-of-class tweets, send to OpenCalais, verify that my OpenCalais parsing code is reading their responses correctly - did I miss any answers? Adding more fixtures to test_opencalais_ner.py would be a good start
+  * Replicate the OpenCalais code for DBPediaSpotlight so we have a second public NER engine to compare against
+  * Extend ner_api_caller.py and build a local simple "capitalised brand detector" (e.g. it only looks for the exact term "Apple" in the tweet) - it'll do a similar job to the OpenCalais and DBPedia API calls but without an API call as the code will be local (and really simple) - this would be a very sensible baseline tool
+
 Design flaws
 ------------
 
