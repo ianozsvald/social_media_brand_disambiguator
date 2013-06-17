@@ -94,11 +94,11 @@ Simple learning
 
 Use sklearn in a trivial way to classify in and out of class examples. learn1 uses Leave One Out Cross Validation with a Logistic Regression classifier using default text preparation methods, the results are pretty poor. Note that there is no real validation set (just an out of sample test for the 2 cases as a sanity check after training). This is a trivial classifier and isn't to be trusted for any real work.
 
-Results are written to a hardcoded table name (see learn1.py)
+Results are written to the table specified as the second argument:
 
 ******* NOTE use SQLiteManager to copy scikit_validation_app to learn1_validation_apple
 
-    $ DISAMBIGUATOR_CONFIG=production python learn1.py scikit_testtrain_apple 
+    $ DISAMBIGUATOR_CONFIG=production python learn1.py scikit_testtrain_apple --validation_table=learn1_validation_apple
 
 Scoring predictions
 -------------------
@@ -117,10 +117,12 @@ TODO
 
 Here are a few ideas of mini projects if you'd like to collaborate but aren't sure about the machine-learning side of things:
 
+  * IAN - export a list of tweet ids and class labels to a .csv file
   * Take my list of tweet-ids, fetch them from Twitter and insert into SQLite using sql_convenience, add the classification that I'll also provide (note - ask me for this list as it isn't in the repo yet)
-  * Extract a validation set of 100 in- and 100 out-of-class tweets, send to OpenCalais, verify that my OpenCalais parsing code is reading their responses correctly - did I miss any answers? Adding more fixtures to test_opencalais_ner.py would be a good start
-  * Replicate the OpenCalais code for DBPediaSpotlight so we have a second public NER engine to compare against
+  * Inherit ner_api_caller.py and build an interface to DBPediaSpotlight, include fixtures in the test code
+  * Extract a validation set of 100 in- and 100 out-of-class tweets, send to DBPedia
   * Extend ner_api_caller.py and build a local simple "capitalised brand detector" (e.g. it only looks for the exact term "Apple" in the tweet) - it'll do a similar job to the OpenCalais and DBPedia API calls but without an API call as the code will be local (and really simple) - this would be a very sensible baseline tool
+  * Extend ner_api_caller.py and build a heuristic based classifier - e.g. maybe look at capitalised first letter in the target word and a couple of obvious apple-related terms (e.g. iphone, phone, ios, ipad etc) - this would be the equivalent to a human writing some Boolean rules and it serves as another sensible baseline (if we can't beat this then it raises the question "does this system offer anything that a human couldn't already do?")
 
 Design flaws
 ------------
