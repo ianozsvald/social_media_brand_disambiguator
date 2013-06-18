@@ -102,10 +102,6 @@ Creating a test/train and validation subset
 
 Copy a subset of the annotations table to a test/train set and a validation set:
 
-#Testing:
-#
-#    $ DISAMBIGUATOR_CONFIG=production python make_db_subset.py annotations_apple 10 scikit_testtrain_apple 5 scikit_validation_apple --drop
-
 If you have 2014 Tweets in a SQLite DB named `annotations.sqlite` in a table named `annotations_apple` then here we extract 584 from each of the two classes to produce a new table `scikit_testtrain_apple` and a further 100 from each of the two classes into `scikit_validation_apple` (dropping the destination tables beforehand so we start with blank tables). This gives us 1168 test/train items and 200 held-out validation items:
 
     $ DISAMBIGUATOR_CONFIG=production python make_db_subset.py annotations_apple 584 scikit_testtrain_apple 100 scikit_validation_apple --drop
@@ -140,6 +136,14 @@ Results are written to the table specified as the second argument:
     $ DISAMBIGUATOR_CONFIG=production python learn1.py scikit_testtrain_apple --validation_table=learn1_validation_apple
 
 By supplying the `--validation_table` table the newly predicted class labels are written to the new table (and the tweet text and other details are left untouched).
+
+To investigate a Receiver Operating Characteristics result use:
+
+    $ DISAMBIGUATOR_CONFIG=production python learn1.py scikit_testtrain_apple --roc
+
+To investigate a Precision/Recall result see:
+
+    $ DISAMBIGUATOR_CONFIG=production python learn1.py scikit_testtrain_apple --pr
 
 Scoring predictions
 -------------------
