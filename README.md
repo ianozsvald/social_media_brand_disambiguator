@@ -22,23 +22,32 @@ Setup
 
 The code runs with Python 2.7 using sqlite.
 
-    $ pip install requirements.txt  # base libs
-    $ pip install requirements_matplotlib.txt  # get around MEP11 with second requirements file
+    $ git clone https://github.com/ianozsvald/social_media_brand_disambiguator.git ./src  # clones code into local ./src folder
+    $ virtualenv ./env  # do this in the same folder, not the src subfolder (it would be ok but it is cleaner to leave the environment separate from the src)
+    $ . env/bin/activate  # '.' is short for 'source', it runs the env/bin/activate script to enable the virtualenv
+    $ # note that our path line probably changes to show '(env)' as we have activated the virtualenv
+    $ cd src
+    $ pip install -r requirements.txt  # base libs, installed into our virtualenv
+    $ ipython  # now we'll test the basic installation
+    $   In [1]: import numpy  # test that numpy can be imported
+    $   In [2]: import pandas  # test that pandas can be imported
+    $ pip install -r requirements_2.txt  # get around MEP11/sklearn requirement for numpy with second requirements file
+    $ ipython  # another quick test
+    $   In [1]: import sklearn
+    $   In [2]: import matplotlib
 
-Note that generally I'm using Python 3 __future__ imports, the code isn't tested with Python 3 but the porting should be straight-forward. sqlite only wants byte/strings for key indexing (not unicode strings).
+Note that if you get any errors, you might be missing required dependencies in your current setup. E.g. on linux I install `numpy` using the Ubuntu package manager (apt-get) so that the core dependencies (like ATLAS) are pre-installed, then I install `numpy` using `pip` to the named version (and it uses the OS-installed dependencies that came in via apt-get). You'll have to read up on what's required for your OS depending on which library breaks.
+
+Note that generally I'm using Python 3 `__future__` imports, the code isn't tested with Python 3 but the porting should be straight-forward. sqlite only wants byte/strings for key indexing (not unicode strings).
 
 Tests
 -----
 
+If you're in the `src\` folder and you've activated your virtualenv then you should be ready to run:
+
     $ nosetests  # the project defaults to 'testing' if DISAMBIGUATOR_CONFIG isn't set
     $ nosetests -s  # runs without capturing stdout, useful if you're using `import pdb; pdb.set_trace()` for debugging
     $ nosetests --with-coverage --cover-html  # with an HTML coverage report to cover/index.html
-
-TO FIX
-------
-
-  * the OpenCalais NER code has 1 HARDCODED ENTRY for 'apple' at present, this obviously needs to be extracted as a parameter.
-  * tweet_annotator.py has some hardcoded apple entries
 
 
 Creating a gold standard
