@@ -31,7 +31,7 @@ The code runs with Python 2.7 using sqlite.
     $ ipython  # now we'll test the basic installation
     $   In [1]: import numpy  # test that numpy can be imported
     $   In [2]: import pandas  # test that pandas can be imported
-    $ # oddly the cld won't be installed via requirements.txt as the path is too long (!), so we do it by hand:
+    $ # oddly the cld won't be installed via requirements.txt as the path is too long (see below), so we do it by hand:
     $ pip install chromium-compact-language-detector==0.2  # language detector for annotating
     $ ipython  # test that cld is installed
     $   In [1]: import cld
@@ -41,6 +41,8 @@ The code runs with Python 2.7 using sqlite.
     $   In [2]: import matplotlib
 
 Note that if you get any errors, you might be missing required dependencies in your current setup. E.g. on linux I install `numpy` using the Ubuntu package manager (apt-get) so that the core dependencies (like ATLAS) are pre-installed, then I install `numpy` using `pip` to the named version (and it uses the OS-installed dependencies that came in via apt-get). You'll have to read up on what's required for your OS depending on which library breaks.
+
+Note that the `pip` `IOError: [Errno 36 File name too long` error is related to my Ubuntu installation with an encrypted home directory as detailed here: https://bugs.launchpad.net/ecryptfs/+bug/344878
 
 Note that generally I'm using Python 3 `__future__` imports, the code isn't tested with Python 3 but the porting should be straight-forward. sqlite only wants byte/strings for key indexing (not unicode strings).
 
