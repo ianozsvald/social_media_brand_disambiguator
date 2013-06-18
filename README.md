@@ -72,7 +72,7 @@ SQLite is built into Python 2.7, it is a lightweight single-file database. You c
 Creating a gold standard
 ------------------------
 
-If you have a SQLiteDB then you won't need to do this.
+If you have a SQLiteDB then you won't need to do this. `apple10.json` is an example input file of tweets you've collected from Twitter via cURL on their streaming API, it is a many-line text file where each line is a valid JSON document (exactly as streamed via Twitter).
 
     $ u'/home/ian/workspace/virtualenvs/tweet_disambiguation_project/prototype1/src'
     $ #export DISAMBIGUATOR_CONFIG=production  # might be useful if not using ipython
@@ -89,10 +89,12 @@ OpenCalais have a strong named entity recognition API offering, we can use it to
 
     $ API_KEY = "<opencalais-key>"
 
-You can run the annotator using:
+You can run the annotator using the following, it looks for the company name `apple` in the return from OpenCalais and stores the result in a new `opencalais_<brand>` table:
 
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais --drop  # optionally drop the destination table so we start afresh
-    $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais # run in another window to double fetching speed
+    $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais # run in another window to double fetching speed (note that we've removed the --drop flag for the second and subsequent runs)
+
+In the above case you'll have a new table `opencalais_apple`. If you run more than one terminal remember to use `--drop` on the first run (to drop any historic results), then to remove `--drop` from subsequent parallel runs. I tend to run 2 or 3 processes in parallel, they annotate anything that's not yet annotated (and if two annotate the same thing, only one result gets written).
 
 
 Creating a test/train and validation subset
@@ -100,51 +102,59 @@ Creating a test/train and validation subset
 
 Copy a subset of the annotations table to a test/train set and a validation set:
 
-Testing:
+#Testing:
+#
+#    $ DISAMBIGUATOR_CONFIG=production python make_db_subset.py annotations_apple 10 scikit_testtrain_apple 5 scikit_validation_apple --drop
 
-    $ DISAMBIGUATOR_CONFIG=production python make_db_subset.py annotations_apple 10 scikit_testtrain_apple 5 scikit_validation_apple --drop
-
-Real:
+If you have 2014 Tweets in a SQLite DB named `annotations.sqlite` in a table named `annotations_apple` then here we extract 584 from each of the two classes to produce a new table `scikit_testtrain_apple` and a further 100 from each of the two classes into `scikit_validation_apple` (dropping the destination tables beforehand so we start with blank tables). This gives us 1168 test/train items and 200 held-out validation items:
 
     $ DISAMBIGUATOR_CONFIG=production python make_db_subset.py annotations_apple 584 scikit_testtrain_apple 100 scikit_validation_apple --drop
 
 Exporting results
 -----------------
 
-Output an ordered list of classifications and tweets (by tweet_id), allows a diff (e.g. using meld):
+Output an ordered list of classifications and tweets (by tweet_id), allows a diff (e.g. using meld or a similar graphical diff tool):
 
     $ DISAMBIGUATOR_CONFIG=production python export_classified_tweets.py annotations_apple > output/annotations_apple.csv
     $ DISAMBIGUATOR_CONFIG=production python export_classified_tweets.py opencalais_apple > output/opencalais_apple.csv
 
-    $ DISAMBIGUATOR_CONFIG=production python score_results.py annotations_apple opencalais_apple
 
 Exporting test/train data
 -------------------------
 
-    $ DISAMBIGUATOR_CONFIG=production python export_inclass_outclass.py annotations_apple
+Now we need to write out our data files, the following will generate `data/scikit_testtrain_apple_in_class.csv` and `data/scikit_testtrain_apple_out_class.csv`:
+
+    $ DISAMBIGUATOR_CONFIG=production python export_inclass_outclass.py scikit_testtrain_apple
 
 Simple learning
 ---------------
 
 Use sklearn in a trivial way to classify in and out of class examples. learn1 uses Leave One Out Cross Validation with a Logistic Regression classifier using default text preparation methods, the results are pretty poor. Note that there is no real validation set (just an out of sample test for the 2 cases as a sanity check after training). This is a trivial classifier and isn't to be trusted for any real work.
 
+NOTE first we have to make the destination table for learning, use SQLiteManager to copy scikit_validation_apple (right click on it and select Copy) to learn1_validation_apple, this gives us an identical copy in the sqlite database.
+
+NOTE that we expect to see exported `.csv` text files for in_class and out_class examples (see previous section).
+
 Results are written to the table specified as the second argument:
 
-******* NOTE use SQLiteManager to copy scikit_validation_app to learn1_validation_apple
-
     $ DISAMBIGUATOR_CONFIG=production python learn1.py scikit_testtrain_apple --validation_table=learn1_validation_apple
+
+By supplying the `--validation_table` table the newly predicted class labels are written to the new table (and the tweet text and other details are left untouched).
 
 Scoring predictions
 -------------------
 
-We can score another table (e.g. predicitions from the scikit code - forthcoming) against the gold standard, it outputs Precision and Recall.
+We can score the validation subset of the Gold Standard against the learned result:
 
-    $ DISAMBIGUATOR_CONFIG=production python score_results.py annotations_apple scikit_apple
+    $ DISAMBIGUATOR_CONFIG=production python score_results.py scikit_validation_apple learn1_validation_apple
 
-To compare the validation subset of a Gold Standard to e.g. the OpenCalais equivalent use:
+We can score the validation subset of the Gold Standard against the OpenCalais results too:
 
     $ DISAMBIGUATOR_CONFIG=production python score_results.py scikit_validation_apple opencalais_apple
-    $ DISAMBIGUATOR_CONFIG=production python score_results.py scikit_validation_apple learn1_validation_apple
+
+We can score the full Gold Standard against the OpenCalais results:
+
+    $ DISAMBIGUATOR_CONFIG=production python score_results.py annotations_apple opencalais_apple
 
 TODO
 ----
