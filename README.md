@@ -31,6 +31,10 @@ The code runs with Python 2.7 using sqlite.
     $ ipython  # now we'll test the basic installation
     $   In [1]: import numpy  # test that numpy can be imported
     $   In [2]: import pandas  # test that pandas can be imported
+    $ # oddly the cld won't be installed via requirements.txt as the path is too long (!), so we do it by hand:
+    $ pip install chromium-compact-language-detector==0.2  # language detector for annotating
+    $ ipython  # test that cld is installed
+    $   In [1]: import cld
     $ pip install -r requirements_2.txt  # get around MEP11/sklearn requirement for numpy with second requirements file
     $ ipython  # another quick test
     $   In [1]: import sklearn
@@ -49,9 +53,24 @@ If you're in the `src\` folder and you've activated your virtualenv then you sho
     $ nosetests -s  # runs without capturing stdout, useful if you're using `import pdb; pdb.set_trace()` for debugging
     $ nosetests --with-coverage --cover-html  # with an HTML coverage report to cover/index.html
 
+Note if you see `ImportError: cannot import name opencalais_key` then if you plan to use OpenCalais, you need an API key (but if you don't plan to use their NER then you don't need the key and you can ignore this test failure).
+
+A word on environment variables
+-------------------------------
+
+I'm running on Linux, I use an environment variable `DISAMBIGUATOR_CONFIG` to tell the code if we're running in `testing` or `production`. This switches between an in-memory SQLite DB for testing which is blanked and an on-disk SQLite DB which is not blanked. By default if the environment variable has not been set, the code will assume that we're in `testing` mode (so nothing is stored beyond the single session). 
+
+If you want to use SQLite DB then the code expects to see something like `data/annotations.sqlite`. You can then either put `DISAMBIGUATOR_CONFIG=production` before whatever you run, or `export DISAMBIGUATOR_CONFIG=production` for that shell window (but if you then run the `nosetests` remember that it'll think it is in `production` mode and will start to mess with the production database).
+
+A word on SQLite Databases
+--------------------------
+
+SQLite is built into Python 2.7, it is a lightweight single-file database. You can investigate it at the command line usinng `sqlite3`. In Firefox look at https://addons.mozilla.org/en-us/firefox/addon/sqlite-manager/ for a nice graphical manager.
 
 Creating a gold standard
 ------------------------
+
+If you have a SQLiteDB then you won't need to do this.
 
     $ u'/home/ian/workspace/virtualenvs/tweet_disambiguation_project/prototype1/src'
     $ #export DISAMBIGUATOR_CONFIG=production  # might be useful if not using ipython
@@ -64,7 +83,11 @@ Creating a gold standard
 Annotating the tweets using OpenCalais
 --------------------------------------
 
-OpenCalais have a strong named entity recognition API offering, we can use it to annotate tweets to see how it does.
+OpenCalais have a strong named entity recognition API offering, we can use it to annotate tweets to see how it does. You need an API key from them via http://www.opencalais.com/APIkey and you need to copy the key into a 1 line file named `ner_apis/opencalais/opencalais_key.py` which will look like:
+
+    $ API_KEY = "<opencalais-key>"
+
+You can run the annotator using:
 
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais --drop  # optionally drop the destination table so we start afresh
     $ DISAMBIGUATOR_CONFIG=production python ner_annotator.py apple opencalais # run in another window to double fetching speed
