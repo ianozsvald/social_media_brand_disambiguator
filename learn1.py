@@ -77,20 +77,42 @@ if __name__ == "__main__":
     target = np.array([1] * len(in_class_lines) + [0] * len(out_class_lines))
 
     stopWords = stopwords.words('english')
-    vectorizer = CountVectorizer(stop_words=stopWords, ngram_range=(1, 1), min_df=1)
+    vectorizer = CountVectorizer(stop_words=stopWords, min_df=2)
+    #vectorizer = CountVectorizer(stop_words=stopWords, ngram_range=(1, 2), min_df=3, binary=True, lowercase=True)
     trainVectorizerArray = vectorizer.fit_transform(train_set).toarray()
     # get list of feature_names, these occur > 1 time in the dataset
     print("Feature names:", vectorizer.get_feature_names()[:20], "...")
     print("Found %d features" % (len(vectorizer.get_feature_names())))
 
+    #clf = linear_model.LogisticRegression(penalty='l1', C=1)
+    #clf = linear_model.LogisticRegression(penalty='l2', C=10)
     clf = linear_model.LogisticRegression()
 
-    #kf = cross_validation.LeaveOneOut(n=len(target))  # KFold(n=len(target), k=10, shuffle=True)
     kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
-    print("Shortcut cross_val_score to do the same thing, using all CPUs:")
     cross_val_scores = cross_validation.cross_val_score(clf, trainVectorizerArray, target, cv=kf, n_jobs=-1)
-    print("Cross validation scores:" + str(cross_val_scores))
+    print("Cross validation in/out of class scores:" + str(cross_val_scores))
     print("Accuracy: %0.2f (+/- %0.2f)" % (cross_val_scores.mean(), cross_val_scores.std() / 2))
+
+    # try the idea of calculating a cross entropy score per fold
+    cross_entropy_errors_by_fold = np.zeros(len(kf))
+    for i, (train_rows, test_rows) in enumerate(kf):
+        Y = target[train_rows]
+        X = trainVectorizerArray[train_rows]
+        probas_ = clf.fit(X, Y).predict_proba(trainVectorizerArray[test_rows])
+        # compute Cross Entropy using the Natural Log:
+        # ( -tln(y) ) − ( (1−t)ln(1−y) )
+        # for all tested items in this fold
+        probs_class1 = probas_[:, 1]  # get the class 1 probabilities
+        Y_test = target[test_rows]
+        cross_entropy_errors = ((-Y_test) * (np.log(probs_class1))) - ((1 - Y_test) * (np.log(1 - probs_class1)))
+        cross_entropy_errors_by_fold[i] = np.sum(cross_entropy_errors)
+    #import pdb; pdb.set_trace()
+    print("Cross validation cross entropy errors:" + str(cross_entropy_errors_by_fold))
+    print("Cross entropy (lower is better): %0.2f (+/- %0.2f)" % (cross_entropy_errors_by_fold.mean(), cross_entropy_errors_by_fold.std() / 2))
+
+    # to plot the word vector on the training data use:
+    # plt.imshow(trainVectorizerArray, cmap=cm.gray, interpolation='nearest')
+    # plt.show()
 
     # plot a Receiver Operating Characteristics plot from the cross validation
     # sets
