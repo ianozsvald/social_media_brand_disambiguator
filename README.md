@@ -3,9 +3,7 @@
 
 Brand disambiguator for tweets to differentiate e.g. Orange vs orange (brand vs foodstuff), using NLTK and scikit-learn
 
-NOTE this is a work in progress, started June 2013, currently it doesn't do very much at all
-
-NOTE NOTE NOTE ! this checkin (10th June 2013) gets my working code checked-in before two talks. I need to go back and do some refactoring (removing some hardcoded table names, improving these docs) before this will work smoothly. YOU HAVE BEEN WARNED.
+NOTE this is a work in progress, started June 2013, currently it doesn't do very much at all. Currently I use a LogisticRegression classifier with a default CountVectorizer to classify the sense of a single word ('apple' at present) as in-class (is-a-brand) and out-of-class (is-anything-else).
 
 I'm only using English tweets and only annotating the ones I can clearly differentiate.
 
