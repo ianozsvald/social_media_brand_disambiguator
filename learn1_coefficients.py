@@ -7,14 +7,13 @@ from __future__ import print_function  # force use of print("hello")
 from __future__ import unicode_literals  # force unadorned strings "" to be unicode without prepending u""
 import argparse
 import os
+import copy
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import linear_model
 from sklearn import cross_validation
-from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from matplotlib import pyplot as plt
-from matplotlib import cm
 from nltk.corpus import stopwords
 import unicodecsv
 import sql_convenience
@@ -106,99 +105,67 @@ if __name__ == "__main__":
     print("Feature names (first 20):", vectorizer.get_feature_names()[:20], "...")
     print("Vectorized %d features" % (len(vectorizer.get_feature_names())))
 
-    clf = linear_model.LogisticRegression()
+    MAX_PLOTS = 2
+    f = plt.subplot(MAX_PLOTS, 1, 0)
+    plt.clf()
 
-    kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
-    # using a score isn't so helpful here (I think) as I want to know the
-    # distance from the desired categories and a >0.5 threshold isn't
-    # necessaryily the right thing to measure (I care about precision when
-    # classifying, not recall, so the threshold matters)
-    #cross_val_scores = cross_validation.cross_val_score(clf, trainVectorizerArray, target, cv=kf, n_jobs=-1)
-    #print("Cross validation in/out of class test scores:" + str(cross_val_scores))
-    #print("Accuracy: %0.3f (+/- %0.3f)" % (cross_val_scores.mean(), cross_val_scores.std() / 2))
+    for n in range(MAX_PLOTS):
+        if n == 0:
+            clf = linear_model.LogisticRegression()
+        else:
+            clf = linear_model.LogisticRegression(penalty='l1')
 
-    # try the idea of calculating a cross entropy score per fold
-    cross_entropy_errors_test_by_fold = np.zeros(len(kf))
-    cross_entropy_errors_train_by_fold = np.zeros(len(kf))
-    for i, (train_rows, test_rows) in enumerate(kf):
-        Y_train = target[train_rows]
-        X_train = trainVectorizerArray[train_rows]
-        X_test = trainVectorizerArray[test_rows]
-        probas_test_ = clf.fit(X_train, Y_train).predict_proba(X_test)
-        probas_train_ = clf.fit(X_train, Y_train).predict_proba(X_train)
-        # compute cross entropy for all trained and tested items in this fold
-        Y_test = target[test_rows]
+        kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
+        # using a score isn't so helpful here (I think) as I want to know the
+        # distance from the desired categories and a >0.5 threshold isn't
+        # necessaryily the right thing to measure (I care about precision when
+        # classifying, not recall, so the threshold matters)
+        #cross_val_scores = cross_validation.cross_val_score(clf, trainVectorizerArray, target, cv=kf, n_jobs=-1)
+        #print("Cross validation in/out of class test scores:" + str(cross_val_scores))
+        #print("Accuracy: %0.3f (+/- %0.3f)" % (cross_val_scores.mean(), cross_val_scores.std() / 2))
 
-        cross_entropy_errors_test = cross_entropy_error(Y_test, probas_test_)
-        cross_entropy_errors_train = cross_entropy_error(Y_train, probas_train_)
-        cross_entropy_errors_test_by_fold[i] = np.average(cross_entropy_errors_test)
-        cross_entropy_errors_train_by_fold[i] = np.average(cross_entropy_errors_train)
-    #import pdb; pdb.set_trace()
+        f = plt.subplot(MAX_PLOTS, 1, n + 1)
+
+        # try the idea of calculating a cross entropy score per fold
+        cross_entropy_errors_test_by_fold = np.zeros(len(kf))
+        cross_entropy_errors_train_by_fold = np.zeros(len(kf))
+        for i, (train_rows, test_rows) in enumerate(kf):
+            Y_train = target[train_rows]
+            X_train = trainVectorizerArray[train_rows]
+            X_test = trainVectorizerArray[test_rows]
+            probas_test_ = clf.fit(X_train, Y_train).predict_proba(X_test)
+            probas_train_ = clf.fit(X_train, Y_train).predict_proba(X_train)
+            # compute cross entropy for all trained and tested items in this fold
+            Y_test = target[test_rows]
+
+            cross_entropy_errors_test = cross_entropy_error(Y_test, probas_test_)
+            cross_entropy_errors_train = cross_entropy_error(Y_train, probas_train_)
+            cross_entropy_errors_test_by_fold[i] = np.average(cross_entropy_errors_test)
+            cross_entropy_errors_train_by_fold[i] = np.average(cross_entropy_errors_train)
+
+            plt.plot(clf.coef_[0], 'b', alpha=0.3)
+            plt.ylabel("Coefficient value")
+        plt.xlim(xmax=clf.coef_.shape[1])
+    plt.xlabel("Coefficient per term")
+    # plot the tokens with the largest coefficients
+    def annotate_tokens(indices_for_large_coefficients, clf, vectorizer, plt):
+        y = clf.coef_[0][indices_for_large_coefficients]
+        tokens = np.array(vectorizer.get_feature_names())[indices_for_large_coefficients]
+        for x, y, token in zip(indices_for_large_coefficients, y, tokens):
+            plt.text(x, y, token)
+
+    coef = copy.copy(clf.coef_[0])
+    coef.sort()
+    annotate_tokens(np.where(clf.coef_ >= coef[-10])[1], clf, vectorizer, plt)
+    annotate_tokens(np.where(clf.coef_ < coef[10])[1], clf, vectorizer, plt)
+
+    f = plt.subplot(MAX_PLOTS, 1, 1)
+    plt.title("{}: l2 penalty (top) vs l1 penalty (bottom) for {} cross fold models on {}".format(str(clf.__class__).split('.')[-1][:-2], len(kf), args.table))
+
+
+
     print("Training:")
     show_cross_validation_errors(cross_entropy_errors_train_by_fold)
     print("Testing:")
     show_cross_validation_errors(cross_entropy_errors_test_by_fold)
 
-    if args.termmatrix:
-        fig = plt.figure()
-        # to plot the word vector on the training data use:
-        plt.title("{} matrix of features per sample for {}".format(str(vectorizer.__class__).split('.')[-1][:-2], args.table))
-        plt.imshow(trainVectorizerArray, cmap=cm.gray, interpolation='nearest', origin='lower')
-        nbr_features = trainVectorizerArray.shape[1]
-        plt.xlabel("{} Features".format(nbr_features))
-        last_class_0_index = len(out_class_lines) - 1
-        plt.ylabel("Samples (Class 0: 0-{}, Class 1: {}-{})".format(last_class_0_index, last_class_0_index + 1, trainVectorizerArray.shape[0] - 1))
-        plt.hlines([last_class_0_index], 0, nbr_features, colors='r', alpha=0.8)
-        plt.show()
-
-    # plot a Receiver Operating Characteristics plot from the cross validation
-    # sets
-    if args.roc:
-        fig = plt.figure()
-        for i, (train, test) in enumerate(kf):
-            probas_ = clf.fit(trainVectorizerArray[train], target[train]).predict_proba(trainVectorizerArray[test])
-            fpr, tpr, thresholds = roc_curve(target[test], probas_[:, 1])
-            roc_auc = auc(fpr, tpr)
-            plt.plot(fpr, tpr, lw=1, alpha=0.8, label='ROC fold %d (area = %0.2f)' % (i, roc_auc))
-
-        plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
-
-        plt.xlim([-0.05, 1.05])
-        plt.ylim([-0.05, 1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('Receiver operating characteristics')  # , Mean ROC (area = %0.2f)' % (mean_auc))
-        plt.legend(loc="lower right")
-        plt.show()
-
-    # plot a Precision/Recall line chart from the cross validation sets
-    if args.pr:
-        fig = plt.figure()
-        for i, (train, test) in enumerate(kf):
-            probas_ = clf.fit(trainVectorizerArray[train], target[train]).predict_proba(trainVectorizerArray[test])
-            precision, recall, thresholds = precision_recall_curve(target[test], probas_[:, 1])
-            pr_auc = auc(recall, precision)
-            plt.plot(recall, precision, label='Precision-Recall curve %d (area = %0.2f)' % (i, pr_auc))
-
-        plt.xlabel('Recall')
-        plt.ylabel('Precision')
-        plt.ylim([-0.05, 1.05])
-        plt.xlim([-0.05, 1.05])
-        plt.title('Precision-Recall curves')
-        plt.legend(loc="lower left")
-        plt.show()
-
-    # write validation results to specified table
-    if args.validation_table:
-        # make sparse training set using all of the test/train data (combined into
-        # one set)
-        train_set_sparse = vectorizer.transform(train_set)
-        # instantiate a local classifier
-        clfl = clf.fit(train_set_sparse.todense(), target)
-
-        # check and print out two classifications as sanity checks
-        check_classification(vectorizer, clfl)
-        # use a threshold (arbitrarily chosen at present), test against the
-        # validation set and write classifications to DB for reporting
-        chosen_threshold = 0.92
-        label_learned_set(vectorizer, clfl, chosen_threshold, args.validation_table)
