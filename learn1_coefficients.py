@@ -72,6 +72,13 @@ def show_cross_validation_errors(cross_entropy_errors_by_fold):
     print("Cross entropy (lower is better): %0.3f (+/- %0.3f)" % (cross_entropy_errors_by_fold.mean(), cross_entropy_errors_by_fold.std() / 2))
 
 
+def annotate_tokens(indices_for_large_coefficients, clf, vectorizer, plt):
+    y = clf.coef_[0][indices_for_large_coefficients]
+    tokens = np.array(vectorizer.get_feature_names())[indices_for_large_coefficients]
+    for x, y, token in zip(indices_for_large_coefficients, y, tokens):
+        plt.text(x, y, token)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple sklearn implementation, example usage "learn1.py scikit_testtrain_apple --validation_table=learn1_validation_apple"')
     parser.add_argument('table', help='Name of in and out of class data to read (e.g. scikit_validation_app)')
@@ -135,25 +142,14 @@ if __name__ == "__main__":
             X_test = trainVectorizerArray[test_rows]
             probas_test_ = clf.fit(X_train, Y_train).predict_proba(X_test)
             probas_train_ = clf.fit(X_train, Y_train).predict_proba(X_train)
-            # compute cross entropy for all trained and tested items in this fold
-            Y_test = target[test_rows]
 
-            cross_entropy_errors_test = cross_entropy_error(Y_test, probas_test_)
-            cross_entropy_errors_train = cross_entropy_error(Y_train, probas_train_)
-            cross_entropy_errors_test_by_fold[i] = np.average(cross_entropy_errors_test)
-            cross_entropy_errors_train_by_fold[i] = np.average(cross_entropy_errors_train)
-
+            # plot the Logistic Regression coefficients
             plt.plot(clf.coef_[0], 'b', alpha=0.3)
             plt.ylabel("Coefficient value")
         plt.xlim(xmax=clf.coef_.shape[1])
+
     plt.xlabel("Coefficient per term")
     # plot the tokens with the largest coefficients
-    def annotate_tokens(indices_for_large_coefficients, clf, vectorizer, plt):
-        y = clf.coef_[0][indices_for_large_coefficients]
-        tokens = np.array(vectorizer.get_feature_names())[indices_for_large_coefficients]
-        for x, y, token in zip(indices_for_large_coefficients, y, tokens):
-            plt.text(x, y, token)
-
     coef = copy.copy(clf.coef_[0])
     coef.sort()
     annotate_tokens(np.where(clf.coef_ >= coef[-10])[1], clf, vectorizer, plt)
@@ -161,11 +157,3 @@ if __name__ == "__main__":
 
     f = plt.subplot(MAX_PLOTS, 1, 1)
     plt.title("{}: l2 penalty (top) vs l1 penalty (bottom) for {} cross fold models on {}".format(str(clf.__class__).split('.')[-1][:-2], len(kf), args.table))
-
-
-
-    print("Training:")
-    show_cross_validation_errors(cross_entropy_errors_train_by_fold)
-    print("Testing:")
-    show_cross_validation_errors(cross_entropy_errors_test_by_fold)
-
