@@ -12,14 +12,15 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import precision_score
 from sklearn import linear_model
-#from sklearn import svm
+from sklearn.naive_bayes import BernoulliNB
+from sklearn import tree
+from sklearn import svm
 from sklearn import cross_validation
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from matplotlib import pyplot as plt
 from matplotlib import cm
 from nltk.corpus import stopwords
 import unicodecsv
-import sql_convenience
 
 
 ############
@@ -43,45 +44,36 @@ def reader(class_name):
     return lines
 
 
-def label_learned_set(vectorizer, clfl, threshold, validation_table):
-    for row in sql_convenience.extract_classifications_and_tweets(validation_table):
-        cls, tweet_id, tweet_text = row
-        spd = vectorizer.transform([tweet_text]).todense()
-        predicted_cls = clfl.predict(spd)
-        predicted_class = predicted_cls[0]  # turn 1D array of 1 item into 1 item
-        predicted_proba = clfl.predict_proba(spd)[0][predicted_class]
-        if predicted_proba < threshold and predicted_class == 1:
-            predicted_class = 0  # force to out-of-class if we don't trust our answer
-        sql_convenience.update_class(tweet_id, validation_table, predicted_class)
-
-
-def check_classification(vectorizer, clfl):
-    spd0 = vectorizer.transform([u'really enjoying how the apple\'s iphone makes my ipad look small']).todense()
-    print("1?", clfl.predict(spd0), clfl.predict_proba(spd0))  # -> 1 which is set 1 (is brand)
-    spd1 = vectorizer.transform([u'i like my apple, eating it makes me happy']).todense()
-    print("0?", clfl.predict(spd1), clfl.predict_proba(spd1))  # -> 0 which is set 0 (not brand)
-
-
 def cross_entropy_error(Y, probas_):
     # compute Cross Entropy using the Natural Log:
     # ( -tln(y) ) − ( (1−t)ln(1−y) )
     probas_class1 = probas_[:, 1]  # get the class 1 probabilities
+    # force any 1.0 (100%) probabilities to be fractionally smaller, so
+    # np.log(1-1) doesn't generate a NaN
+    probas_class1[np.where(probas_class1 == 1.0)] = 0.999999999999999
+    probas_class1[np.where(probas_class1 == 0.0)] = 0.000000000000001
+    #import pdb; pdb.set_trace()
     cross_entropy_errors = ((-Y) * (np.log(probas_class1))) - ((1 - Y) * (np.log(1 - probas_class1)))
     return cross_entropy_errors
 
 
-def show_cross_validation_errors(cross_entropy_errors_by_fold):
-    print("Cross validation cross entropy errors:" + str(cross_entropy_errors_by_fold))
-    print("Cross entropy (lower is better): %0.2f (+/- %0.2f)" % (cross_entropy_errors_by_fold.mean(), cross_entropy_errors_by_fold.std() / 2))
+def show_errors(cross_entropy_errors_by_fold, method="cross entropy", lower_is_better=True):
+    print("Cross validation %s errors:" % (method) + str(cross_entropy_errors_by_fold))
+    if lower_is_better:
+        note = "(lower is better)"
+    else:
+        note = "(higher is better)"
+
+    print("%s %s: %0.2f (+/- %0.2f)" % (method, note, cross_entropy_errors_by_fold.mean(), cross_entropy_errors_by_fold.std() / 2))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple sklearn implementation, example usage "learn1.py scikit_testtrain_apple --validation_table=learn1_validation_apple"')
     parser.add_argument('table', help='Name of in and out of class data to read (e.g. scikit_validation_app)')
-    parser.add_argument('--validation_table', help='Table of validation data - get tweets and write predicted class labels back (e.g. learn1_validation_apple)')
-    parser.add_argument('--roc', default=False, action="store_true", help='Plot a Receiver Operating Characterics graph for the learning results')
-    parser.add_argument('--pr', default=False, action="store_true", help='Plot a Precision/Recall graph for the learning results')
-    parser.add_argument('--termmatrix', default=False, action="store_true", help='Draw a 2D matrix of tokens vs binary presence (or absence) using all training documents')
+    #parser.add_argument('--validation_table', help='Table of validation data - get tweets and write predicted class labels back (e.g. learn1_validation_apple)')
+    #parser.add_argument('--roc', default=False, action="store_true", help='Plot a Receiver Operating Characterics graph for the learning results')
+    #parser.add_argument('--pr', default=False, action="store_true", help='Plot a Precision/Recall graph for the learning results')
+    #parser.add_argument('--termmatrix', default=False, action="store_true", help='Draw a 2D matrix of tokens vs binary presence (or absence) using all training documents')
     args = parser.parse_args()
 
     data_dir = "data"
@@ -92,119 +84,67 @@ if __name__ == "__main__":
     out_class_lines = reader(out_class_name)
 
     # put all items into the training set
-    train_set = out_class_lines + in_class_lines
+    train_set = np.array(out_class_lines + in_class_lines)
     target = np.array([0] * len(out_class_lines) + [1] * len(in_class_lines))
 
     # choose a vectorizer to turn the tokens in tweets into a matrix of
     # examples (we can plot this further below using --termmatrix)
     stopWords = stopwords.words('english')
     MIN_DF = 2
-    vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=(1, 2))
+    NGRAM_RANGE = (1, 2)
+    vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=NGRAM_RANGE)
     #vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=(1, 2))
     #vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=(1, 3))
-    vectorizer_tfidf = TfidfVectorizer(stop_words=stopWords, min_df=MIN_DF, ngram_range=(1, 3))
+    vectorizer_tfidf = TfidfVectorizer(stop_words=stopWords, min_df=MIN_DF, ngram_range=NGRAM_RANGE)
     #vectorizer = vectorizer_tfidf
     vectorizer = vectorizer_binary
+    print(vectorizer)
 
-    trainVectorizerArray = vectorizer.fit_transform(train_set).toarray()
-    print("Feature names (first 20):", vectorizer.get_feature_names()[:20], "...")
-    print("Vectorized %d features" % (len(vectorizer.get_feature_names())))
-
-    clf = linear_model.LogisticRegression()
-    #clf = svm.LinearSVC()
     #clf = linear_model.LogisticRegression(penalty='l2', C=1.2)
+    _ = linear_model.LogisticRegression()
+    _ = svm.LinearSVC()
+    clf = BernoulliNB()  # useful for binary inputs (MultinomialNB is useful for counts)
+    _ = tree.DecisionTreeClassifier(compute_importances=True, max_depth=5)
 
     kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
-    # using a score isn't so helpful here (I think) as I want to know the
-    # distance from the desired categories and a >0.5 threshold isn't
-    # necessaryily the right thing to measure (I care about precision when
-    # classifying, not recall, so the threshold matters)
-    cross_val_scores = cross_validation.cross_val_score(clf, trainVectorizerArray, target, cv=kf, n_jobs=-1, score_func=precision_score)
-    #print("Cross validation test precision:" + str(cross_val_scores))
-    print("Cross validation test precision: %0.2f (+/- %0.2f)" % (cross_val_scores.mean(), cross_val_scores.std() / 2))
 
     # try the idea of calculating a cross entropy score per fold
     cross_entropy_errors_test_by_fold = np.zeros(len(kf))
     cross_entropy_errors_train_by_fold = np.zeros(len(kf))
+    precisions_by_fold = np.zeros(len(kf))
     for i, (train_rows, test_rows) in enumerate(kf):
+        tweets_train_rows = train_set[train_rows]  # select training rows
+        tweets_test_rows = train_set[test_rows]  # select testing rows
         Y_train = target[train_rows]
-        X_train = trainVectorizerArray[train_rows]
-        X_test = trainVectorizerArray[test_rows]
-        probas_test_ = clf.fit(X_train, Y_train).predict_proba(X_test)
-        probas_train_ = clf.fit(X_train, Y_train).predict_proba(X_train)
-        # compute cross entropy for all trained and tested items in this fold
         Y_test = target[test_rows]
+        X_train = vectorizer.fit_transform(tweets_train_rows).toarray()
+        X_test = vectorizer.transform(tweets_test_rows).todense()
 
-        cross_entropy_errors_test = cross_entropy_error(Y_test, probas_test_)
-        cross_entropy_errors_train = cross_entropy_error(Y_train, probas_train_)
-        cross_entropy_errors_test_by_fold[i] = np.average(cross_entropy_errors_test)
-        cross_entropy_errors_train_by_fold[i] = np.average(cross_entropy_errors_train)
-    #import pdb; pdb.set_trace()
+        clf.fit(X_train, Y_train)
+        probas_test_ = clf.predict_proba(X_test)
+        probas_train_ = clf.predict_proba(X_train)
+        # compute cross entropy for all trained and tested items in this fold
+        if True:
+            cross_entropy_errors_test = cross_entropy_error(Y_test, probas_test_)
+            cross_entropy_errors_train = cross_entropy_error(Y_train, probas_train_)
+            cross_entropy_errors_test_by_fold[i] = np.average(cross_entropy_errors_test)
+            cross_entropy_errors_train_by_fold[i] = np.average(cross_entropy_errors_train)
+        precisions_by_fold[i] = precision_score(Y_test, clf.predict(X_test))
+
+    if isinstance(clf, tree.DecisionTreeClassifier):
+        # print the most important features
+        feature_importances = zip(clf.feature_importances_, vectorizer.get_feature_names())
+        feature_importances.sort(reverse=True)
+        print("Most important features:", feature_importances[:10])
+
+        with open("dectree.dot", 'w') as f:
+            f = tree.export_graphviz(clf, out_file=f, feature_names=vectorizer.get_feature_names())
+            # dot -Tpdf dectree.dot -o dectree.pdf  # turn dot into PDF for visual
+            # diagnosis
+
     print("Training:")
-    show_cross_validation_errors(cross_entropy_errors_train_by_fold)
+    show_errors(cross_entropy_errors_train_by_fold)
     print("Testing:")
-    show_cross_validation_errors(cross_entropy_errors_test_by_fold)
-
-    if args.termmatrix:
-        fig = plt.figure()
-        # to plot the word vector on the training data use:
-        plt.title("{} matrix of features per sample for {}".format(str(vectorizer.__class__).split('.')[-1][:-2], args.table))
-        plt.imshow(trainVectorizerArray, cmap=cm.gray, interpolation='nearest', origin='lower')
-        nbr_features = trainVectorizerArray.shape[1]
-        plt.xlabel("{} Features".format(nbr_features))
-        last_class_0_index = len(out_class_lines) - 1
-        plt.ylabel("Samples (Class 0: 0-{}, Class 1: {}-{})".format(last_class_0_index, last_class_0_index + 1, trainVectorizerArray.shape[0] - 1))
-        plt.hlines([last_class_0_index], 0, nbr_features, colors='r', alpha=0.8)
-        plt.show()
-
-    # plot a Receiver Operating Characteristics plot from the cross validation
-    # sets
-    if args.roc:
-        fig = plt.figure()
-        for i, (train, test) in enumerate(kf):
-            probas_ = clf.fit(trainVectorizerArray[train], target[train]).predict_proba(trainVectorizerArray[test])
-            fpr, tpr, thresholds = roc_curve(target[test], probas_[:, 1])
-            roc_auc = auc(fpr, tpr)
-            plt.plot(fpr, tpr, lw=1, alpha=0.8, label='ROC fold %d (area = %0.2f)' % (i, roc_auc))
-
-        plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
-
-        plt.xlim([-0.05, 1.05])
-        plt.ylim([-0.05, 1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('Receiver operating characteristics')  # , Mean ROC (area = %0.2f)' % (mean_auc))
-        plt.legend(loc="lower right")
-        plt.show()
-
-    # plot a Precision/Recall line chart from the cross validation sets
-    if args.pr:
-        fig = plt.figure()
-        for i, (train, test) in enumerate(kf):
-            probas_ = clf.fit(trainVectorizerArray[train], target[train]).predict_proba(trainVectorizerArray[test])
-            precision, recall, thresholds = precision_recall_curve(target[test], probas_[:, 1])
-            pr_auc = auc(recall, precision)
-            plt.plot(recall, precision, label='Precision-Recall curve %d (area = %0.2f)' % (i, pr_auc))
-
-        plt.xlabel('Recall')
-        plt.ylabel('Precision')
-        plt.ylim([-0.05, 1.05])
-        plt.xlim([-0.05, 1.05])
-        plt.title('Precision-Recall curves')
-        plt.legend(loc="lower left")
-        plt.show()
-
-    # write validation results to specified table
-    if args.validation_table:
-        # make sparse training set using all of the test/train data (combined into
-        # one set)
-        train_set_sparse = vectorizer.transform(train_set)
-        # instantiate a local classifier
-        clfl = clf.fit(train_set_sparse.todense(), target)
-
-        # check and print out two classifications as sanity checks
-        check_classification(vectorizer, clfl)
-        # use a threshold (arbitrarily chosen at present), test against the
-        # validation set and write classifications to DB for reporting
-        chosen_threshold = 0.92
-        label_learned_set(vectorizer, clfl, chosen_threshold, args.validation_table)
+    show_errors(cross_entropy_errors_test_by_fold)
+    print("Precisions:")
+    show_errors(precisions_by_fold, method="precision", lower_is_better=False)
