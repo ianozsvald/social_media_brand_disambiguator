@@ -16,9 +16,9 @@ from sklearn.naive_bayes import BernoulliNB
 from sklearn import tree
 from sklearn import svm
 from sklearn import cross_validation
-from sklearn.metrics import roc_curve, auc, precision_recall_curve
+#from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from matplotlib import pyplot as plt
-from matplotlib import cm
+#from matplotlib import cm
 from nltk.corpus import stopwords
 import unicodecsv
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     # examples (we can plot this further below using --termmatrix)
     stopWords = stopwords.words('english')
     MIN_DF = 2
-    NGRAM_RANGE = (1, 2)
+    NGRAM_RANGE = (1, 3)
     vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=NGRAM_RANGE)
     #vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=(1, 2))
     #vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=(1, 3))
@@ -101,17 +101,25 @@ if __name__ == "__main__":
     print(vectorizer)
 
     #clf = linear_model.LogisticRegression(penalty='l2', C=1.2)
-    _ = linear_model.LogisticRegression()
+    clf = linear_model.LogisticRegression()
     _ = svm.LinearSVC()
-    clf = BernoulliNB()  # useful for binary inputs (MultinomialNB is useful for counts)
+    _ = BernoulliNB()  # useful for binary inputs (MultinomialNB is useful for counts)
     _ = tree.DecisionTreeClassifier(compute_importances=True, max_depth=5)
 
     kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
 
+    f = plt.figure(1)
+    f.clf()
+
     # try the idea of calculating a cross entropy score per fold
     cross_entropy_errors_test_by_fold = np.zeros(len(kf))
     cross_entropy_errors_train_by_fold = np.zeros(len(kf))
+
     precisions_by_fold = np.zeros(len(kf))
+    # build arrays of all the class 0 and 1 probabilities (matching the class 0
+    # and 1 gold tags)
+    probabilities_class_0_Y_test_all_folds = np.array([])
+    probabilities_class_1_Y_test_all_folds = np.array([])
     for i, (train_rows, test_rows) in enumerate(kf):
         tweets_train_rows = train_set[train_rows]  # select training rows
         tweets_test_rows = train_set[test_rows]  # select testing rows
@@ -122,6 +130,16 @@ if __name__ == "__main__":
 
         clf.fit(X_train, Y_train)
         probas_test_ = clf.predict_proba(X_test)
+
+        # select and concatenate the class 0 and 1 probabilities to their
+        # respective arrays for later investigation
+        probabilities_class_1_Y_test = probas_test_[np.where(Y_test == 1)]  # get all probabilities for class 1
+        nbr_features_X_test = [np.sum(row) for row in X_test[np.where(Y_test == 1)]]
+        class_1_labels = plt.scatter(nbr_features_X_test, probabilities_class_1_Y_test[:, 1], c='c', edgecolor='none', label="Class 1")
+        probabilities_class_0_Y_test = probas_test_[np.where(Y_test == 0)]  # get all probabilities for class 0
+        nbr_features_X_test = [np.sum(row) for row in X_test[np.where(Y_test == 0)]]
+        class_0_labels = plt.scatter(nbr_features_X_test, probabilities_class_0_Y_test[:, 1], c='k', edgecolor='none', label="Class 0")
+
         probas_train_ = clf.predict_proba(X_train)
         # compute cross entropy for all trained and tested items in this fold
         if True:
@@ -130,6 +148,18 @@ if __name__ == "__main__":
             cross_entropy_errors_test_by_fold[i] = np.average(cross_entropy_errors_test)
             cross_entropy_errors_train_by_fold[i] = np.average(cross_entropy_errors_train)
         precisions_by_fold[i] = precision_score(Y_test, clf.predict(X_test))
+
+        print(len(test_rows))
+        probabilities_class_0_Y_test_all_folds = np.concatenate((probabilities_class_0_Y_test_all_folds, probabilities_class_0_Y_test[:, 1]))
+        probabilities_class_1_Y_test_all_folds = np.concatenate((probabilities_class_1_Y_test_all_folds, probabilities_class_1_Y_test[:, 1]))
+
+    plt.legend((class_1_labels, class_0_labels), (class_1_labels.get_label(), class_0_labels.get_label()), scatterpoints=2, loc=7)
+    plt.xlim(xmin=-1)
+    plt.ylim(-0.05, 1.05)
+    plt.xlabel('Number of features for example')
+    plt.ylabel('Probability of class 1 for example')
+    plt.title("{} class probabilities with {} features".format(str(clf.__class__).split('.')[-1][:-2], len(vectorizer.get_feature_names())))
+    plt.show()
 
     if isinstance(clf, tree.DecisionTreeClassifier):
         # print the most important features
