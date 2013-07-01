@@ -180,6 +180,8 @@ Other notes
   
   * https://github.com/twitter/twitter-text-rb/blob/master/lib/twitter-text/regex.rb  Notes from twitter on how they handle unicode:
   * http://nerd.eurecom.fr/documentation  possibly worth considering these other APIs?
+  * http://en.wikipedia.org/wiki/Word-sense_disambiguation
+  * http://dbpedia.org/page/Word-sense_disambiguation
 
 
 3rd party bugs
