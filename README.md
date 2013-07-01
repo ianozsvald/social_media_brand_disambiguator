@@ -1,7 +1,7 @@
  social_media_brand_disambiguator
 =================================
 
-Brand disambiguator for tweets to differentiate e.g. Orange vs orange (brand vs foodstuff), using NLTK and scikit-learn
+Brand disambiguator for tweets to differentiate e.g. Orange vs orange (brand vs foodstuff), using NLTK and scikit-learn. This is a form of http://en.wikipedia.org/wiki/Word-sense_disambiguation
 
 NOTE this is a work in progress, started June 2013, currently it doesn't do very much at all. Currently I use a LogisticRegression classifier with a default CountVectorizer to classify the sense of a single word ('apple' at present) as in-class (is-a-brand) and out-of-class (is-anything-else).
 
@@ -180,8 +180,6 @@ Other notes
   
   * https://github.com/twitter/twitter-text-rb/blob/master/lib/twitter-text/regex.rb  Notes from twitter on how they handle unicode:
   * http://nerd.eurecom.fr/documentation  possibly worth considering these other APIs?
-  * http://en.wikipedia.org/wiki/Word-sense_disambiguation
-  * http://dbpedia.org/page/Word-sense_disambiguation
 
 
 3rd party bugs
