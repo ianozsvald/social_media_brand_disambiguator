@@ -14,6 +14,7 @@ from sklearn.metrics import precision_score
 from sklearn import linear_model
 from sklearn.naive_bayes import BernoulliNB
 from sklearn import tree
+from sklearn import ensemble
 from sklearn import svm
 from sklearn import cross_validation
 #from sklearn.metrics import roc_curve, auc, precision_recall_curve
@@ -91,8 +92,9 @@ if __name__ == "__main__":
     # examples (we can plot this further below using --termmatrix)
     stopWords = stopwords.words('english')
     MIN_DF = 2
-    NGRAM_RANGE = (1, 3)
+    NGRAM_RANGE = (1, 2)
     vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=NGRAM_RANGE)
+
     #vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=(1, 2))
     #vectorizer_binary = CountVectorizer(stop_words=stopWords, min_df=MIN_DF, binary=True, ngram_range=(1, 3))
     vectorizer_tfidf = TfidfVectorizer(stop_words=stopWords, min_df=MIN_DF, ngram_range=NGRAM_RANGE)
@@ -101,10 +103,11 @@ if __name__ == "__main__":
     print(vectorizer)
 
     #clf = linear_model.LogisticRegression(penalty='l2', C=1.2)
-    clf = linear_model.LogisticRegression()
+    _ = linear_model.LogisticRegression()
     _ = svm.LinearSVC()
-    _ = BernoulliNB()  # useful for binary inputs (MultinomialNB is useful for counts)
-    _ = tree.DecisionTreeClassifier(compute_importances=True, max_depth=5)
+    clf = BernoulliNB()  # useful for binary inputs (MultinomialNB is useful for counts)
+    _ = tree.DecisionTreeClassifier(compute_importances=True, max_depth=20, min_samples_leaf=5)
+    _ = ensemble.RandomForestClassifier(compute_importances=True, max_depth=30, min_samples_leaf=5, n_estimators=100, oob_score=True, n_jobs=-1)
 
     kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
 
