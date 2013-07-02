@@ -12,7 +12,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import precision_score
 from sklearn import linear_model
-from sklearn.naive_bayes import BernoulliNB
+from sklearn import naive_bayes
 from sklearn import tree
 from sklearn import ensemble
 from sklearn import svm
@@ -103,11 +103,20 @@ if __name__ == "__main__":
     print(vectorizer)
 
     #clf = linear_model.LogisticRegression(penalty='l2', C=1.2)
-    _ = linear_model.LogisticRegression()
+    clf = linear_model.LogisticRegression()
     _ = svm.LinearSVC()
-    clf = BernoulliNB()  # useful for binary inputs (MultinomialNB is useful for counts)
-    _ = tree.DecisionTreeClassifier(compute_importances=True, max_depth=20, min_samples_leaf=5)
-    _ = ensemble.RandomForestClassifier(compute_importances=True, max_depth=30, min_samples_leaf=5, n_estimators=100, oob_score=True, n_jobs=-1)
+    _ = naive_bayes.BernoulliNB()  # useful for binary inputs (MultinomialNB is useful for counts)
+    _ = naive_bayes.GaussianNB()
+    _ = naive_bayes.MultinomialNB()
+    _ = ensemble.AdaBoostClassifier(n_estimators=100, base_estimator=tree.DecisionTreeClassifier(max_depth=2, criterion='entropy'))
+    #clf = ensemble.AdaBoostClassifier(n_estimators=100, base_estimator=tree.DecisionTreeClassifier(max_depth=2))
+    _ = tree.DecisionTreeClassifier(max_depth=50, min_samples_leaf=5)
+    #clf = tree.DecisionTreeClassifier(max_depth=2, min_samples_leaf=5, criterion='entropy')
+    #clf = ensemble.RandomForestClassifier(max_depth=20, min_samples_leaf=5, n_estimators=10, oob_score=False, n_jobs=-1, criterion='entropy')
+    _ = ensemble.RandomForestClassifier(max_depth=10, min_samples_leaf=5, n_estimators=50, n_jobs=-1, criterion='entropy')
+    #clf = ensemble.RandomForestClassifier(max_depth=30, min_samples_leaf=5, n_estimators=100, oob_score=True, n_jobs=-1)
+
+    print(clf)
 
     kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
 
@@ -164,6 +173,12 @@ if __name__ == "__main__":
     plt.title("{} class probabilities with {} features".format(str(clf.__class__).split('.')[-1][:-2], len(vectorizer.get_feature_names())))
     plt.show()
 
+    # trial of grid search
+    #from sklearn.grid_search import GridSearchCV
+    #grid_search = GridSearchCV(linear_model.LogisticRegression(), {'C': np.power(10.0, np.arange(-3, 3, step=0.5))}, n_jobs=-1, verbose=1)
+    #res=grid_search.fit(X_train, Y_train)
+    #res.best_params_
+
     if isinstance(clf, tree.DecisionTreeClassifier):
         # print the most important features
         feature_importances = zip(clf.feature_importances_, vectorizer.get_feature_names())
@@ -172,7 +187,7 @@ if __name__ == "__main__":
 
         with open("dectree.dot", 'w') as f:
             f = tree.export_graphviz(clf, out_file=f, feature_names=vectorizer.get_feature_names())
-            # dot -Tpdf dectree.dot -o dectree.pdf  # turn dot into PDF for visual
+        os.system("dot -Tpdf dectree.dot -o dectree.pdf")  # turn dot into PDF for visual
             # diagnosis
 
     print("Training:")
