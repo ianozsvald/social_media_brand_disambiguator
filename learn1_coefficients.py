@@ -12,6 +12,7 @@ import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import linear_model
+from sklearn import naive_bayes
 from sklearn import cross_validation
 from matplotlib import pyplot as plt
 from nltk.corpus import stopwords
@@ -59,19 +60,6 @@ def check_classification(vectorizer, clfl):
     print("0?", clfl.predict(spd1), clfl.predict_proba(spd1))  # -> 0 which is set 0 (not brand)
 
 
-def cross_entropy_error(Y, probas_):
-    # compute Cross Entropy using the Natural Log:
-    # ( -tln(y) ) − ( (1−t)ln(1−y) )
-    probas_class1 = probas_[:, 1]  # get the class 1 probabilities
-    cross_entropy_errors = ((-Y) * (np.log(probas_class1))) - ((1 - Y) * (np.log(1 - probas_class1)))
-    return cross_entropy_errors
-
-
-def show_cross_validation_errors(cross_entropy_errors_by_fold):
-    print("Cross validation cross entropy errors:" + str(cross_entropy_errors_by_fold))
-    print("Cross entropy (lower is better): %0.3f (+/- %0.3f)" % (cross_entropy_errors_by_fold.mean(), cross_entropy_errors_by_fold.std() / 2))
-
-
 def annotate_tokens(indices_for_large_coefficients, clf, vectorizer, plt):
     y = clf.coef_[0][indices_for_large_coefficients]
     tokens = np.array(vectorizer.get_feature_names())[indices_for_large_coefficients]
@@ -112,15 +100,21 @@ if __name__ == "__main__":
     print("Feature names (first 20):", vectorizer.get_feature_names()[:20], "...")
     print("Vectorized %d features" % (len(vectorizer.get_feature_names())))
 
-    MAX_PLOTS = 2
-    f = plt.subplot(MAX_PLOTS, 1, 0)
+    MAX_PLOTS = 3
+    f = plt.figure(1)
     plt.clf()
+    f = plt.subplot(MAX_PLOTS, 1, 0)
 
     for n in range(MAX_PLOTS):
         if n == 0:
+            clf = naive_bayes.BernoulliNB()
+            title = "Bernoulli Naive Bayes"
+        if n == 1:
             clf = linear_model.LogisticRegression()
-        else:
+            title = "Logistic Regression l2 error"
+        if n == 2:
             clf = linear_model.LogisticRegression(penalty='l1')
+            title = "Logistic Regression l1 error"
 
         kf = cross_validation.KFold(n=len(target), n_folds=5, shuffle=True)
         # using a score isn't so helpful here (I think) as I want to know the
@@ -132,10 +126,8 @@ if __name__ == "__main__":
         #print("Accuracy: %0.3f (+/- %0.3f)" % (cross_val_scores.mean(), cross_val_scores.std() / 2))
 
         f = plt.subplot(MAX_PLOTS, 1, n + 1)
+        plt.title(title)
 
-        # try the idea of calculating a cross entropy score per fold
-        cross_entropy_errors_test_by_fold = np.zeros(len(kf))
-        cross_entropy_errors_train_by_fold = np.zeros(len(kf))
         for i, (train_rows, test_rows) in enumerate(kf):
             Y_train = target[train_rows]
             X_train = trainVectorizerArray[train_rows]
@@ -144,9 +136,15 @@ if __name__ == "__main__":
             probas_train_ = clf.fit(X_train, Y_train).predict_proba(X_train)
 
             # plot the Logistic Regression coefficients
-            plt.plot(clf.coef_[0], 'b', alpha=0.3)
+
+            if n == 1 or n == 2:
+                coef = clf.coef_[0]
+            if n == 0:
+                coef = clf.coef_
+            plt.plot(coef, 'b', alpha=0.3)
             plt.ylabel("Coefficient value")
-        plt.xlim(xmax=clf.coef_.shape[1])
+        xmax = coef.shape[0]
+        plt.xlim(xmax=xmax)
 
     plt.xlabel("Coefficient per term")
     # plot the tokens with the largest coefficients
@@ -155,5 +153,6 @@ if __name__ == "__main__":
     annotate_tokens(np.where(clf.coef_ >= coef[-10])[1], clf, vectorizer, plt)
     annotate_tokens(np.where(clf.coef_ < coef[10])[1], clf, vectorizer, plt)
 
-    f = plt.subplot(MAX_PLOTS, 1, 1)
-    plt.title("{}: l2 penalty (top) vs l1 penalty (bottom) for {} cross fold models on {}".format(str(clf.__class__).split('.')[-1][:-2], len(kf), args.table))
+    #f = plt.subplot(MAX_PLOTS, 1, 1)
+    #plt.title("{}: l2 penalty (top) vs l1 penalty (bottom) for {} cross fold models on {}".format(str(clf.__class__).split('.')[-1][:-2], len(kf), args.table))
+    plt.show()
