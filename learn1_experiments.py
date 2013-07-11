@@ -16,6 +16,7 @@ from sklearn import naive_bayes
 from sklearn import tree
 from sklearn import ensemble
 from sklearn import svm
+from sklearn import neighbors
 from sklearn import cross_validation
 #from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from matplotlib import pyplot as plt
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     print(vectorizer)
 
     #clf = linear_model.LogisticRegression(penalty='l2', C=1.2)
-    clf = linear_model.LogisticRegression()
+    _ = linear_model.LogisticRegression()
     _ = svm.LinearSVC()
     _ = naive_bayes.BernoulliNB()  # useful for binary inputs (MultinomialNB is useful for counts)
     _ = naive_bayes.GaussianNB()
@@ -115,6 +116,7 @@ if __name__ == "__main__":
     #clf = ensemble.RandomForestClassifier(max_depth=20, min_samples_leaf=5, n_estimators=10, oob_score=False, n_jobs=-1, criterion='entropy')
     _ = ensemble.RandomForestClassifier(max_depth=10, min_samples_leaf=5, n_estimators=50, n_jobs=-1, criterion='entropy')
     #clf = ensemble.RandomForestClassifier(max_depth=30, min_samples_leaf=5, n_estimators=100, oob_score=True, n_jobs=-1)
+    clf = neighbors.KNeighborsClassifier(n_neighbors=11)
 
     print(clf)
 
@@ -132,6 +134,8 @@ if __name__ == "__main__":
     # and 1 gold tags)
     probabilities_class_0_Y_test_all_folds = np.array([])
     probabilities_class_1_Y_test_all_folds = np.array([])
+    # list of all the false positives for later diagnostic
+    all_false_positives_zipped = []
     for i, (train_rows, test_rows) in enumerate(kf):
         tweets_train_rows = train_set[train_rows]  # select training rows
         tweets_test_rows = train_set[test_rows]  # select testing rows
@@ -142,6 +146,17 @@ if __name__ == "__main__":
 
         clf.fit(X_train, Y_train)
         probas_test_ = clf.predict_proba(X_test)
+
+        predictions_test = clf.predict(X_test)
+        # figure out false positive rows from X_test (which is a subset from
+        # train_set)
+        false_positive_locations = np.where(Y_test - predictions_test == -1)  # 0 (truth) - 1 (prediction) == -1 which is a false positive
+        false_positive_tweet_rows = test_rows[np.where(Y_test - predictions_test == -1)]
+        false_positive_tweets = train_set[false_positive_tweet_rows]
+        bag_of_words_false_positive_tweets = vectorizer.inverse_transform(X_test[false_positive_locations])
+        false_positives_zipped = zip(false_positive_tweets, bag_of_words_false_positive_tweets)
+        all_false_positives_zipped.append(false_positives_zipped)
+        #import pdb; pdb.set_trace()
 
         # select and concatenate the class 0 and 1 probabilities to their
         # respective arrays for later investigation
